@@ -7,26 +7,53 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_svg/flutter_svg.dart';
+import 'package:http/http.dart' as http;
 
 import 'package:modul_6/main.dart';
 
 void main() {
-  testWidgets('menu menampilkan enam aset ilustrasi', (WidgetTester tester) async {
-    tester.view.physicalSize = const Size(500, 1000);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-
-    await tester.pumpWidget(const MyApp());
+  testWidgets('menampilkan berita dari API', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MyHomePage(
+          title: 'Demo ListView.builder',
+          fetchNews: (_) async => http.Response(
+            '{"posts":[{"title":"Berita contoh","published_at":"Hari ini"}]}',
+            200,
+          ),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
 
-    expect(find.text('Kehadiran'), findsOneWidget);
-    expect(find.text('Jadwal'), findsOneWidget);
-    expect(find.text('Tugas'), findsOneWidget);
-    expect(find.text('Pengumuman'), findsOneWidget);
-    expect(find.text('Nilai'), findsOneWidget);
-    expect(find.text('Catatan'), findsOneWidget);
-    expect(find.byType(SvgPicture), findsNWidgets(6));
+    expect(find.text('Berita contoh'), findsOneWidget);
+    expect(find.text('Hari ini'), findsOneWidget);
+  });
+
+  testWidgets('menampilkan opsi coba lagi saat API gagal', (WidgetTester tester) async {
+    var attempts = 0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MyHomePage(
+          title: 'Demo ListView.builder',
+          fetchNews: (_) async {
+            attempts++;
+            if (attempts == 1) {
+              return http.Response('', 503);
+            }
+            return http.Response('{"posts":[]}', 200);
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Coba lagi'), findsOneWidget);
+    await tester.tap(find.text('Coba lagi'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Belum ada berita untuk ditampilkan.'), findsOneWidget);
+    expect(attempts, 2);
   });
 }
